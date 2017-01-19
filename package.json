@@ -1,0 +1,15 @@
+{
+  "name": "phone-register-service",
+  "version": "1.0.0",
+  "description": "Phone call register service for Alcatel OmniPCX Enterprise via Serial Port NodeJS package",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mssql": "^3.3.0",
+    "serialport": "^4.0.7"
+  }
+}

@@ -28,11 +28,20 @@ sqlConnection.on('error', function(err) {
 var PhoneTypeList = function(){
     sqlConnection.connect(function(err) {
         var request = new sql.Request(sqlConnection);
-        request.query('SELECT * FROM PhoneType', function(err, recordset) {
+        return request.query('SELECT * FROM PhoneType', function(err, recordset) {
+            console.log(recordset);
+            return recordset;
+        });
+    });
+}/*
+var LastPhoneCalls = ()=>{
+    sqlConnection.connect(function(err) {
+        var request = new sql.Request(sqlConnection);
+        request.query('SELECT TOP(100) * FROM PhoneCalls ORDER BY CreationDate DESC', function(err, recordset) {
             console.log(recordset);
         });
     });
-}
+}*/
 var RegisterCall = function(extension,dialedPhone,callTime,callDuration){
     var sql = 'INSERT INTO PhoneCalls (PhoneExtension,PhoneDestination,PhoneCallStartTime,PhoneCallDuration) VALUES(\''+extension+'\',\''+dialedPhone+'\',\''+callTime+'\',\''+callDuration+'\')';
     //console.log(sql);

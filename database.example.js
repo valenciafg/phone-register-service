@@ -42,8 +42,22 @@ var LastPhoneCalls = ()=>{
         });
     });
 }*/
-var RegisterCall = function(extension,dialedPhone,callTime,callDuration){
-    var sql = 'INSERT INTO PhoneCalls (PhoneExtension,PhoneDestination,PhoneCallStartTime,PhoneCallDuration) VALUES(\''+extension+'\',\''+dialedPhone+'\',\''+callTime+'\',\''+callDuration+'\')';
+var RegisterCall = function(data){
+    var sql = 'INSERT INTO PhoneCalls '+
+    '(PhoneExtension,PhoneDestination,PhoneCallStartTime,PhoneCallDuration,RegisteredCost,CostCenterName,BusinessCodeNumber,TrfSub,CommunicationType,CommunicationTypeTwo,CallType)'+
+    ' VALUES(\''+
+    data.ext+
+    '\',\''+data.dialedPhone+
+    '\',\''+data.callTime+
+    '\',\''+data.callDuration+
+    '\','+data.cost+
+    ',\''+data.cnn+
+    '\',\''+data.pni+
+    '\',\''+data.trfSub+
+    '\',\''+data.commType1+
+    '\',\''+data.commType2+
+    '\',\''+data.callType+
+    '\')';
     //console.log(sql);
     sqlConnection.connect(function(err) {
         var transaction = sqlConnection.transaction();

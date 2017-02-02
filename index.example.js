@@ -36,22 +36,22 @@ port.on('data', function (data) {
     var arrayData = consoleData.split('|');
     var phoneData = {
         ext:arrayData[0],
+        cnn: arrayData[1],
+        trfSub: arrayData[2],
         dialedPhone: arrayData[3],
         callTime: arrayData[4],
         callDuration: arrayData[5],
-        callDurationSeconds: arrayData[6],
-        flag1: arrayData[1],
-        flag2: arrayData[2],
-        flag3: arrayData[7],
-        flag4: arrayData[8],
-        flag5: arrayData[9],
-        flag6: arrayData[10]
+        cost: arrayData[6],
+        pni: arrayData[7],
+        commType1: arrayData[8],
+        commType2: arrayData[9],
+        callType: arrayData[10]
     }
     server.io.sockets.emit('action', {type:'NEW_CALL', call:phoneData});
-    if (typeof phoneData.dialedPhone != 'undefined'){
-        console.log('Extension: '+phoneData.ext+' destination Number: '+phoneData.dialedPhone+' Start Time: '+phoneData.callTime+' Duration: '+phoneData.callDuration);
-        database.RegisterCall(phoneData.ext,phoneData.dialedPhone,phoneData.callTime,phoneData.callDuration);
-        server.io.sockets.emit('serial_data',phoneData);
+    if (typeof phoneData.dialedPhone != 'undefined' && /^\d+$/.test(phoneData.ext)){
+        console.log('Extension: '+phoneData.ext+' Dialed Number: '+phoneData.dialedPhone+' Start Time: '+phoneData.callTime+' Duration: '+phoneData.callDuration);
+        database.RegisterCall(phoneData);
+        // server.io.sockets.emit('serial_data',phoneData);
     }else{
         console.log('Invalid values');
     }

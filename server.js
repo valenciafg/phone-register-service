@@ -20,6 +20,9 @@ app.get('/', function(req, res){
 app.get('/extension', function(req, res) {
     database.ExtensionList(res);
 });
+app.get('/phonedirectory', function(req, res) {
+    database.PhoneDirectoryList(res);
+});
 app.get('/lastcalls', function(req, res) {
     database.LastPhoneCalls(res);
 });

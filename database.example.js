@@ -100,12 +100,26 @@ var LastPhoneCalls = function(response){
             .catch(logError);
         }).catch(logError)
 }
+
+var PhoneDirectoryList = function(response){
+    sql.connect(config)
+        .then(function(){
+            var request = new sql.Request();
+            request.query('SELECT * FROM PhoneDirectory ORDER BY PhoneNumber ASC')
+            .then(function(recordset){
+                //console.log('Phone Direcotry ',recordset);
+                response.send(recordset);
+            })
+            .catch(logError);
+        }).catch(logError)
+}
+
 var searchCallsByExtension = (response, ext_number) => {
     sql.connect(config)
         .then(function(){
             var request = new sql.Request();
             request.input('ext_number', sql.NVarChar(50), ext_number)
-            .query('SELECT * FROM PhoneCalls WHERE PhoneExtension = @ext_number ORDER BY CallDate DESC')
+            .query('SELECT TOP(100) * FROM PhoneCalls WHERE PhoneExtension = @ext_number ORDER BY CallDate DESC')
             .then(function(recordset){
                 console.log('Calls by ext '+ext_number,recordset);
                 response.send(recordset);
@@ -152,6 +166,7 @@ module.exports = {
     PhoneTypeList: PhoneTypeList,
     RegisterCall: RegisterCall,
     ExtensionList: ExtensionList,
+    PhoneDirectoryList: PhoneDirectoryList,
     LastPhoneCalls: LastPhoneCalls,
     searchCallsByExtension: searchCallsByExtension,
     CallsList: CallsList,

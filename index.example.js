@@ -45,7 +45,9 @@ port.on('data', function (data) {
         pni: arrayData[7],
         commType1: arrayData[8],
         commType2: arrayData[9],
-        callType: arrayData[10]
+        callType: arrayData[10],
+        callDate: moment().format('DD-MM-YYYY'),
+        callDateUnix: moment().unix()
     }
     server.io.sockets.emit('action', {type:'NEW_CALL', call:phoneData});
     if (typeof phoneData.dialedPhone != 'undefined' && /^\d+$/.test(phoneData.ext)){

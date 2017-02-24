@@ -34,6 +34,18 @@ function logRecordset(recordset){
 function logError(err){
     console.log('Error:',err);
 }
+function otroError(err,msg){
+    console.log('Error:',err);
+    console.log('Msg:',msg);
+}
+function resError(err,response,msg){
+    console.log('Error:',err);
+    response.send({
+        error: true,
+        msg: msg,
+        obj: err
+    })
+}
 /**
 *   Functions
 **/
@@ -121,10 +133,31 @@ var searchCallsByExtension = (response, ext_number) => {
             request.input('ext_number', sql.NVarChar(50), ext_number)
             .query('SELECT TOP(100) * FROM PhoneCalls WHERE PhoneExtension = @ext_number ORDER BY CallDate DESC')
             .then(function(recordset){
-                console.log('Calls by ext '+ext_number,recordset);
+                //console.log('Calls by ext '+ext_number,recordset);
                 response.send(recordset);
             })
             .catch(logError);
+        })
+        .catch(logError)
+}
+var searchCallsByDate = (response, start_date, end_date) => {
+    start_date = new Date(start_date)
+    end_date = new Date(end_date+' 23:59:59:999')
+    //console.log('estos son los paramtros del query ',start_date,' y tambien ',end_date)
+    sql.connect(config)
+        .then(function(){
+            var request = new sql.Request();
+            request.input('start_date', sql.DateTime, start_date)
+            request.input('end_date', sql.DateTime, end_date)
+            .query('SELECT TOP(500) * FROM PhoneCalls WHERE CallDate BETWEEN CONVERT(datetime,@start_date) AND CONVERT(datetime,@end_date)')
+            .then(function(recordset){
+                //console.log('Calls by date ',recordset);
+                response.send({
+                    error:false,
+                    records: recordset
+                });
+            })
+            .catch((e)=>resError(e,response,'Hubo un error'));
         })
         .catch(logError)
 }
@@ -159,6 +192,27 @@ var RegisterCall = function(data){
         });
     });
 }
+var UpdatePhone = function(response,data){
+    sql.connect(config)
+        .then(function(){
+            var request = new sql.Request();
+            request.input('PhoneNumber', sql.NChar(50), data.phoneNumber)
+            request.input('Name', sql.NVarChar(250), data.name)
+            request.input('Area', sql.NVarChar(200), data.area)
+            request.input('Location', sql.NVarChar(200), data.location)
+            request.input('ExtensionID', sql.Int, data.extensionID)
+            .query('UPDATE PhoneDirectory SET PhoneNumber = @PhoneNumber, Name = @Name,Area = @Area,Location =  @Location WHERE ExtensionID = @ExtensionID')
+            .then(function(recordset){
+                //console.log('Calls by date ',recordset);
+                response.send({
+                    error:false,
+                    records: request.rowsAffected
+                });
+            })
+            .catch((e)=>resError(e,response,'Error al actualizar el registro telefonico'));
+        })
+        .catch(logError)
+}
 /**
 * Module Exports
 **/
@@ -169,6 +223,8 @@ module.exports = {
     PhoneDirectoryList: PhoneDirectoryList,
     LastPhoneCalls: LastPhoneCalls,
     searchCallsByExtension: searchCallsByExtension,
+    searchCallsByDate: searchCallsByDate,
+    UpdatePhone: UpdatePhone,
     CallsList: CallsList,
     SrvConfig: config,
     sqlConnection: sqlConnection

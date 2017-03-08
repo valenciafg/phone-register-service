@@ -27,13 +27,30 @@ app.get('/phonedirectory', function(req, res) {
 app.get('/lastcalls', function(req, res) {
     database.LastPhoneCalls(res);
 });
-app.get('/call', function(req, res) {
-    database.CallsList(res);
+app.post('/call', function(req, res) {
+    var ext = req.body.ext
+    if(ext == undefined){
+        res.status(404).send({
+            error: true,
+            text: 'Extension undefined'
+        })
+    }else{
+        database.searchCallsByExtension(res,ext);
+    }
 });
-app.get('/call/:ext', function(req, res) {
-    database.searchCallsByExtension(res,req.params.ext);
+app.post('/calls', function(req,res){
+    var name = req.body.name
+    if(name === undefined){
+        res.status(404).send({
+            error: true,
+            text: 'Extension name undefined'
+        })
+    }else{
+        database.searchCallsByName(res,name)
+    } 
 });
 app.post('/scpost',function(req,res){
+    //console.log(req.body)
     var start = req.body.start
     var end = req.body.end
     //console.log('loque se ha recibido es ',start, ' y tambien ',end)

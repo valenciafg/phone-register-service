@@ -3,6 +3,7 @@ var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var database = require('./database');
+var ldapAuth = require('./ldapAuth');
 var sql = require('mssql');
 var bodyParser = require('body-parser');
 var moment = require('moment');
@@ -86,6 +87,14 @@ app.post('/updatephone',function(req,res){
         data:data
 })*/
     database.UpdatePhone(res,data)
+});
+app.post('/authldapuser',function(req,res){
+    var user = req.body.user
+    var password = req.body.password
+    ldapAuth.AuthLdapUser(res,user,password);
+});
+app.get('/getusersforgroup', function(req, res){
+    ldapAuth.getUsersForGroup(res);
 });
 //  Handle new socket.io client connected
 io.on('connection', function(socket){

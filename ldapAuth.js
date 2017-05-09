@@ -1,3 +1,4 @@
+const lodash = require('lodash');
 var ActiveDirectory = require('activedirectory');
 var config = { url: 'ldap://172.24.10.10',
                baseDN: 'dc=plazameru,dc=com',
@@ -48,9 +49,53 @@ var getUsersForGroup = function(response,groupName = appGroup){
     response.send(usersWithGroup);
   });  
 }
-
+const authGroupUser = function(response, username, password, groupName = appGroup){
+  var sAMAccountName = username + userSuffix;
+  ad.authenticate(sAMAccountName, password, function(err, auth){
+    if (err) {
+      response.send({
+        error: true,
+        message: 'Invalid credentials',
+        code: 'AU000'
+      });
+    }    
+    if (auth) {
+      ad.getGroupMembershipForUser(sAMAccountName, function(err, groups) {
+        if (err) {
+          response.send({
+            error: true,
+            message: 'User is not authorized to use this application',
+            code: 'AU001'
+          });
+        } 
+        if (! groups){
+          response.send({
+            error: true,
+            message: 'User is not authorized to use this application',
+            code: 'AU002'
+          });
+        }else{
+          if(!lodash.find(groups,{"cn": groupName})){
+            response.send({
+              error: true,
+              message: 'User is not authorized to use this application',
+              code: 'AU003'
+            });
+          }else{
+            response.send({
+              error: false,
+              message: 'User authenticated',
+              code: false
+            });
+          }
+        }
+      });
+    }
+  });
+}
 module.exports = {
     ActiveDirectoryObj: ad,
     AuthLdapUser: authUser,
-    getUsersForGroup: getUsersForGroup
+    getUsersForGroup: getUsersForGroup,
+    AuthUser: authGroupUser
 }

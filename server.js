@@ -93,6 +93,11 @@ app.post('/authldapuser',function(req,res){
     var password = req.body.password
     ldapAuth.AuthLdapUser(res,user,password);
 });
+app.post('/authuser',function(req,res){
+    var user = req.body.user
+    var password = req.body.password
+    ldapAuth.AuthUser(res,user,password);
+});
 app.get('/getusersforgroup', function(req, res){
     ldapAuth.getUsersForGroup(res);
 });

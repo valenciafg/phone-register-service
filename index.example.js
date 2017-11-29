@@ -1,41 +1,42 @@
 var SerialPort = require('serialport');
 var database = require('./database');
 var server = require('./server');
+var moment = require('moment');
 
-var portID = '<portID>';
+const portID = '<PortID>';
 var args = {
-  autoOpen: false,
-  baudRate: 9600,
-  dataBits: 8,
-  parser: SerialPort.parsers.readline('\n')
-  //parser: SerialPort.parsers.byteLength(82),
+    autoOpen: false,
+    baudRate: 9600,
+    dataBits: 8,
+    parser: SerialPort.parsers.readline('\n')
+    //parser: SerialPort.parsers.byteLength(82),
 };
 var port = new SerialPort(portID, args);
 
-port.open(function(err){
-  if(err){
-      server.io.sockets.emit('serial_connection_error','Socket Connection Error: '+err.message);
-      return console.log(' Error opening port: ', err.message);
-  }
+port.open(function(err) {
+    if (err) {
+        server.io.sockets.emit('serial_connection_error', 'Socket Connection Error: ' + err.message);
+        return console.log(' Error opening port: ', err.message);
+    }
 });
 
-// open errors will be emitted as an error event
+// Open port, errors will be emitted as an error event
 port.on('open', function() {
-  console.log('SerialPort Open! ');
-  server.io.sockets.emit('serial_connection_open','Socket Connection Open');
+    console.log('SerialPort Open ' + portID);
+    server.io.sockets.emit('serial_connection_open', 'Socket Connection Open');
 });
-port.on('data', function (data) {
-    console.log(data);
+port.on('data', function(data) {
+    console.log('Data from serial port: ', data);
     var consoleData = "";
     var dataSize = data.length;
-    for(var i=1; i < dataSize && dataSize > 0; i++ ){
-        if(data[i] != ' '){
+    for (var i = 1; i < dataSize && dataSize > 0; i++) {
+        if (data[i] != ' ') {
             consoleData += data[i];
         }
     }
     var arrayData = consoleData.split('|');
     var phoneData = {
-        ext:arrayData[0],
+        ext: arrayData[0],
         cnn: arrayData[1],
         trfSub: arrayData[2],
         dialedPhone: arrayData[3],
@@ -49,20 +50,27 @@ port.on('data', function (data) {
         callDate: moment().format('DD-MM-YYYY'),
         callDateUnix: moment().unix()
     }
-    server.io.sockets.emit('action', {type:'NEW_CALL', call:phoneData});
-    if (typeof phoneData.dialedPhone != 'undefined' && /^\d+$/.test(phoneData.ext)){
-        console.log('Extension: '+phoneData.ext+' Dialed Number: '+phoneData.dialedPhone+' Start Time: '+phoneData.callTime+' Duration: '+phoneData.callDuration);
-        database.RegisterCall(phoneData);
-        // server.io.sockets.emit('serial_data',phoneData);
-    }else{
+    if (typeof phoneData.dialedPhone != 'undefined' && /^\d+$/.test(phoneData.ext)) {
+        phoneData.dialedPhone = phoneData.dialedPhone.replace(/\s+/g, '');
+        //console.log('Extension: ' + phoneData.ext + ' Dialed Number: ' + phoneData.dialedPhone + ' Start Time: ' + phoneData.callTime + ' Duration: ' + phoneData.callDuration);
+        //phoneData.callTime = moment(arrayData[4]).format('hh:mm:ss A')
+        if(phoneData.dialedPhone.length > 2 && phoneData.callDuration != '00:00:00'){
+            database.RegisterCall(phoneData);
+            server.io.sockets.emit('action', { type: 'NEW_CALL', call: phoneData });
+        }else{
+            console.log('Invalid dialed phone = ' + phoneData.dialedPhone + ' or duration = ' + phoneData.callDuration);
+        }
+    } else {
         console.log('Invalid values');
     }
 });
-port.on('disconnect',function(){
-  console.log('SerialPort Disconnected');
-  server.io.sockets.emit('serial_connection_disconnect','Socket Connection Disconnect');
+
+port.on('disconnect', function() {
+    console.log('SerialPort Disconnected');
+    server.io.sockets.emit('serial_connection_disconnect', 'Socket Connection Disconnect');
 });
-port.on('error',function(e){
-  console.log('Error on serial comunication: ',e.message);
-  server.io.sockets.emit('serial_connection_error',e.message);
+
+port.on('error', function(e) {
+    console.log('Error on serial comunication: ', e.message);
+    server.io.sockets.emit('serial_connection_error', e.message);
 });

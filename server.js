@@ -8,7 +8,7 @@ var sql = require('mssql');
 var bodyParser = require('body-parser');
 var moment = require('moment');
 
-const SALUDO = "Bienvenido al servicio de captura de llamada, si usted puede ver este mensaje es porque el servicio está activo";
+const WELLCOME_MSG = "Bienvenido al servicio de captura de llamada, si usted puede ver este mensaje es porque el servicio está activo";
 //  Express server uses
 app.use(express.static('public'));
 app.use(bodyParser.json()); // support json encoded bodies
@@ -17,13 +17,16 @@ app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 *   Routes
 **/
 app.get('/', function(req, res){
-    res.status(200).send(SALUDO);
+    res.status(200).send(WELLCOME_MSG);
 });
 app.get('/extension', function(req, res) {
     database.ExtensionList(res);
 });
 app.get('/phonedirectory', function(req, res) {
     database.PhoneDirectoryList(res);
+});
+app.get('/externalphonedirectory', function(req, res) {
+    database.ExternalPhoneDirectoryList(res);
 });
 app.get('/lastcalls', function(req, res) {
     database.LastPhoneCalls(res);
@@ -39,6 +42,17 @@ app.post('/call', function(req, res) {
         database.searchCallsByExtension(res,ext);
     }
 });
+app.post('/searchexternalcall', function(req, res){
+    var ext_id = req.body.ext_id
+    if(ext_id == undefined){
+        res.status(404).send({
+            error: true,
+            text: 'Number undefined'
+        })
+    }else{
+        database.searchCallsByExternalNumber(res, ext_id);
+    }
+});
 app.post('/calls', function(req,res){
     var name = req.body.name
     if(name === undefined){
@@ -51,20 +65,18 @@ app.post('/calls', function(req,res){
     } 
 });
 app.post('/scpost',function(req,res){
-    //console.log(req.body)
     var start = req.body.start
     var end = req.body.end
-    //console.log('loque se ha recibido es ',start, ' y tambien ',end)
+    //console.log('lo que se ha recibido es ',start, ' y tambien ',end)
     if(start === undefined || end === undefined){
         res.status(404).send({
             error: true,
             text: 'Start or End date undefined'
         })
-    }else{       
-        
+    }else{        
         start = moment(start).format('YYYY-MM-DD')
         end = moment(end).format('YYYY-MM-DD')
-        //console.log('se va enviar a la consulta ',start,' y ',end) 
+        // console.log('se va enviar a la consulta ',start,' y ',end) 
         database.searchCallsByDate(res, start, end)
     }
     //console.log('recibido ',start,' y tambien ',end)
@@ -85,13 +97,23 @@ app.post('/updatephone',function(req,res){
     /*res.send({
         text: 'he recibido!',
         data:data
-})*/
+    })*/
     database.UpdatePhone(res,data)
 });
-app.post('/authldapuser',function(req,res){
+app.post('/makeexternalphone', function(req, res){
+    console.log('recibido', req.body)
+    var number = req.body.number
+    var name = req.body.name
+    var data = {
+        number,
+        name
+    }
+    database.MakeExternalPhone(res, data)
+});
+app.post('/authldapuser',function(req, res){
     var user = req.body.user
     var password = req.body.password
-    ldapAuth.AuthLdapUser(res,user,password);
+    ldapAuth.AuthLdapUser(res, user, password);
 });
 app.post('/authuser',function(req,res){
     var user = req.body.user
@@ -101,18 +123,19 @@ app.post('/authuser',function(req,res){
 app.get('/getusersforgroup', function(req, res){
     ldapAuth.getUsersForGroup(res);
 });
+
 //  Handle new socket.io client connected
 io.on('connection', function(socket){
     var address = socket.handshake.address;
-    console.log('Se ha conectado un cliente ',address);
+    console.log('Client connected ', address);
 });
 
 io.on('disconnect', function () {
-    console.log('Cliente desconectado');
+    console.log('Client disconnected');
 });
 //Server Listen port
 server.listen(8080, function(){
-  console.log("Servidor corriendo en http://localhost:8080");
+  console.log("Server running on http://localhost:8080");
 });
 /**
 * Module Exports

@@ -161,21 +161,39 @@ var searchCallsByExtension = (response, ext_number) => {
         })
         .catch(logError)
 }
-var searchCallsByExternalNumber = (response, external_id) => {
+var searchCallsByExternalNumber = (response, data) => {
     sql.connect(config)
         .then(function() {
             var request = new sql.Request();
-            request.input('external_id', sql.Int, external_id)
-            .query(`SELECT TOP(200) pc.*, pd2.Name AS DestinationName, CAST(pc.PhoneCallStartTime AS DATETIME) as MyStartTime, pd.Name AS MyExtPhoneName 
+            var mysql = '';
+            var external = false;
+            if(data.ext_number == undefined){
+                mysql = `SELECT TOP(200) pc.*, pd2.Name AS DestinationName, CAST(pc.PhoneCallStartTime AS DATETIME) as MyStartTime, pd.Name AS MyExtPhoneName 
                 FROM PhoneCalls pc
                 LEFT JOIN PhoneDirectory pd ON pd.PhoneNumber = pc.PhoneExtension
                 INNER JOIN PhoneDirectory pd2 ON pd2.PhoneNumber = pc.PhoneDestination
                 WHERE 
-                pd2.ExtensionID = @external_id`)
-            .then(function(recordset) {
-                response.send(recordset);
-            })
-            .catch(logError);
+                pd2.ExtensionID = @external_id`;
+                request.input('external_id', sql.Int, data.ext_id)
+                .query(mysql)
+                .then(function(recordset) {
+                    response.send(recordset);
+                })
+                .catch(logError);
+            }else{
+                mysql = `SELECT TOP (200) pc.*, CAST(pc.PhoneCallStartTime AS DATETIME) as MyStartTime, pd.Name AS MyExtPhoneName, pd2.Name AS DestinationName
+                FROM PhoneCalls pc
+                LEFT JOIN PhoneDirectory pd ON pd.PhoneNumber = pc.PhoneExtension
+                LEFT JOIN PhoneDirectory pd2 ON pd2.PhoneNumber = pc.PhoneDestination
+                WHERE pc.PhoneDestination = @external_number`;
+                // console.log(mysql, data.ext_number)
+                request.input('external_number', sql.NVarChar(250), data.ext_number)
+                .query(mysql)
+                .then(function(recordset) {
+                    response.send(recordset);
+                })
+                .catch(logError);
+            }
         })
         .catch(logError)
 }
@@ -209,19 +227,19 @@ var searchCallsByDate = (response, start_date, end_date) => {
             var request = new sql.Request();
             request.input('start_date', sql.DateTime, start_date)
             request.input('end_date', sql.DateTime, end_date)
-                .query(`SELECT TOP(500) pc.*, pd2.Name AS DestinationName, CAST(pc.PhoneCallStartTime AS DATETIME) as MyStartTime, pd.Name AS MyExtPhoneName 
-                    FROM PhoneCalls pc
-                    INNER JOIN PhoneDirectory as pd ON pc.PhoneExtension = pd.PhoneNumber 
-                    LEFT JOIN PhoneDirectory pd2 ON pd2.PhoneNumber = RTRIM(pc.PhoneDestination) AND pd2.Type = 'E'
-                    WHERE CallDate BETWEEN CONVERT(datetime, @start_date) AND CONVERT(datetime, @end_date)`)
-                .then(function(recordset) {
-                    //console.log('Calls by date ',recordset);
-                    response.send({
-                        error: false,
-                        records: recordset
-                    });
-                })
-                .catch((e) => resError(e, response, 'Hubo un error'));
+            .query(`SELECT TOP(500) pc.*, pd2.Name AS DestinationName, CAST(pc.PhoneCallStartTime AS DATETIME) as MyStartTime, pd.Name AS MyExtPhoneName 
+                FROM PhoneCalls pc
+                INNER JOIN PhoneDirectory as pd ON pc.PhoneExtension = pd.PhoneNumber 
+                LEFT JOIN PhoneDirectory pd2 ON pd2.PhoneNumber = RTRIM(pc.PhoneDestination) AND pd2.Type = 'E'
+                WHERE CallDate BETWEEN CONVERT(datetime, @start_date) AND CONVERT(datetime, @end_date)`)
+            .then(function(recordset) {
+                //console.log('Calls by date ',recordset);
+                response.send({
+                    error: false,
+                    records: recordset
+                });
+            })
+            .catch((e) => resError(e, response, 'Hubo un error'));
         })
         .catch(logError)
 }
@@ -272,19 +290,104 @@ var UpdatePhone = function(response, data) {
         request.input('Area', sql.NVarChar(200), data.area)
         request.input('Location', sql.NVarChar(200), data.location)
         request.input('ExtensionID', sql.Int, data.extensionID)
-            .query('UPDATE PhoneDirectory SET PhoneNumber = @PhoneNumber, Name = @Name,Area = @Area,Location =  @Location WHERE ExtensionID = @ExtensionID')
-            .then(function(recordset) {
-                //console.log('Calls by date ',recordset);
-                response.send({
-                    error: false,
-                    records: request.rowsAffected
-                });
-            })
-            .catch((e) => resError(e, response, 'Error al actualizar el registro telefonico'));
+        .query('UPDATE PhoneDirectory SET PhoneNumber = @PhoneNumber, Name = @Name,Area = @Area,Location =  @Location WHERE ExtensionID = @ExtensionID')
+        .then(function(recordset) {
+            response.send({
+                error: false,
+                records: request.rowsAffected
+            });
+        })
+        .catch((e) => resError(e, response, 'Error al actualizar el registro telefonico'));
     })
     .catch(logError)
 }
 
+var TopMostCalledPhones = function(response, data){
+    sql.connect(config)
+    .then(function(){
+        var request = new sql.Request();
+        if(Object.keys(data).length === 0 && data.constructor === Object){
+            request.query(`SELECT TOP(20) COUNT(*) as myTop, pc.PhoneDestination, pd.Name 
+            FROM PhoneCalls pc 
+            LEFT JOIN PhoneDirectory pd ON pc.PhoneDestination =  pd.PhoneNumber
+            GROUP BY pc.PhoneDestination, pd.Name 
+            ORDER BY myTop DESC`)
+            .then(function(recordset){
+                response.send({
+                    error: false,
+                    records: recordset
+                });
+            })
+            .catch((e) => resError(e, response, 'Hubo un error'));
+        }else{
+            var start_date = moment(data.start).format('YYYY-MM-DD')+' 00:00:00';
+            var end_date = moment(data.end).format('YYYY-MM-DD')+' 23:59:59';
+            request.input('start_date', sql.DateTime, new Date(start_date))
+            request.input('end_date', sql.DateTime, new Date(end_date))
+            .query(`SELECT TOP(20) COUNT(*) as myTop, pc.PhoneDestination, pd.Name 
+            FROM PhoneCalls pc 
+            LEFT JOIN PhoneDirectory pd ON pc.PhoneDestination =  pd.PhoneNumber
+            WHERE pc.CallDate BETWEEN CONVERT(datetime, @start_date) AND CONVERT(datetime, @end_date)
+            GROUP BY pc.PhoneDestination, pd.Name 
+            ORDER BY myTop DESC`)
+            .then(function(recordset){
+                response.send({
+                    error: false,
+                    records: recordset
+                });
+            })
+            .catch((e) => resError(e, response, 'Hubo un error'));
+        }
+    })
+    .catch(logError)
+}
+var TopDurationCalls = function(response, data){
+    sql.connect(config)
+    .then(function(){
+        var request = new sql.Request();
+        if(Object.keys(data).length === 0 && data.constructor === Object){
+            request.query(`SELECT TOP(20) CONVERT(TIME, DATEADD(s, SUM(
+                ( DATEPART(hh, pc.PhoneCallDuration) * 3600 ) +
+                ( DATEPART(mi, pc.PhoneCallDuration) * 60 ) +
+                DATEPART(ss, pc.PhoneCallDuration)),0)) AS myTop, 
+                pc.PhoneDestination, pd.Name
+                FROM PhoneCalls pc
+                LEFT JOIN PhoneDirectory pd ON pc.PhoneDestination =  pd.PhoneNumber
+                GROUP BY pc.PhoneDestination, pd.Name 
+                ORDER BY myTop DESC`)
+            .then(function(recordset){
+                response.send({
+                    error: false,
+                    records: recordset
+                });
+            })
+            .catch((e) => resError(e, response, 'Hubo un error'));
+        }else{
+            var start_date = moment(data.start).format('YYYY-MM-DD')+' 00:00:00';
+            var end_date = moment(data.end).format('YYYY-MM-DD')+' 23:59:59';
+            request.input('start_date', sql.DateTime, new Date(start_date))
+            request.input('end_date', sql.DateTime, new Date(end_date))
+            .query(`SELECT TOP(20) CONVERT(TIME, DATEADD(s, SUM(
+                ( DATEPART(hh, pc.PhoneCallDuration) * 3600 ) +
+                ( DATEPART(mi, pc.PhoneCallDuration) * 60 ) +
+                DATEPART(ss, pc.PhoneCallDuration)),0)) AS myTop, 
+                pc.PhoneDestination, pd.Name
+                FROM PhoneCalls pc
+                LEFT JOIN PhoneDirectory pd ON pc.PhoneDestination =  pd.PhoneNumber
+                WHERE pc.CallDate BETWEEN CAST(@start_date AS DATETIME) AND CAST(@end_date AS DATETIME)
+                GROUP BY pc.PhoneDestination, pd.Name 
+                ORDER BY myTop DESC`)
+            .then(function(recordset){
+                response.send({
+                    error: false,
+                    records: recordset
+                });
+            })
+            .catch((e) => resError(e, response, 'Hubo un error'));
+        }
+    })
+    .catch(logError)
+}
 var MakeExternalPhone = function(response, data){
     console.log('se va mandar',data)
     sql.connect(config)
@@ -293,8 +396,6 @@ var MakeExternalPhone = function(response, data){
         request.input('number', sql.NVarChar(50), data.number)
         request.input('name', sql.NVarChar(250), data.name)
         request.execute('make_external_phone', function(err, result){
-            // console.log('asd', err)
-            // console.log('asd1', result)
             if(err === undefined){
                 response.send({
                     error: false,
@@ -326,7 +427,9 @@ module.exports = {
     searchCallsByExternalNumber,
     UpdatePhone: UpdatePhone,
     MakeExternalPhone,
-    CallsList: CallsList,
+    CallsList,
+    TopMostCalledPhones,
+    TopDurationCalls,
     SrvConfig: config,
     sqlConnection: sqlConnection
 }

@@ -44,13 +44,18 @@ app.post('/call', function(req, res) {
 });
 app.post('/searchexternalcall', function(req, res){
     var ext_id = req.body.ext_id
-    if(ext_id == undefined){
+    var ext_number = req.body.ext_number
+    if(ext_id == undefined && ext_number == undefined){
         res.status(404).send({
             error: true,
             text: 'Number undefined'
         })
     }else{
-        database.searchCallsByExternalNumber(res, ext_id);
+        var data = {
+            ext_id,
+            ext_number
+        }
+        database.searchCallsByExternalNumber(res, data);
     }
 });
 app.post('/calls', function(req,res){
@@ -67,7 +72,6 @@ app.post('/calls', function(req,res){
 app.post('/scpost',function(req,res){
     var start = req.body.start
     var end = req.body.end
-    //console.log('lo que se ha recibido es ',start, ' y tambien ',end)
     if(start === undefined || end === undefined){
         res.status(404).send({
             error: true,
@@ -76,10 +80,17 @@ app.post('/scpost',function(req,res){
     }else{        
         start = moment(start).format('YYYY-MM-DD')
         end = moment(end).format('YYYY-MM-DD')
-        // console.log('se va enviar a la consulta ',start,' y ',end) 
         database.searchCallsByDate(res, start, end)
     }
-    //console.log('recibido ',start,' y tambien ',end)
+});
+app.post('/mcphone',function(req, res){
+    const data = req.body
+    database.TopMostCalledPhones(res, data)
+});
+app.post('/topdurationcalls',function(req, res){
+    const data = req.body
+    // console.log('asdsadas', data)
+    database.TopDurationCalls(res, data)
 });
 app.post('/updatephone',function(req,res){
     var extensionID = req.body.extensionID
@@ -94,14 +105,10 @@ app.post('/updatephone',function(req,res){
         area: area,
         location: location
     }
-    /*res.send({
-        text: 'he recibido!',
-        data:data
-    })*/
     database.UpdatePhone(res,data)
 });
 app.post('/makeexternalphone', function(req, res){
-    console.log('recibido', req.body)
+    // console.log('recibido', req.body)
     var number = req.body.number
     var name = req.body.name
     var data = {
@@ -136,6 +143,9 @@ io.on('disconnect', function () {
 //Server Listen port
 server.listen(8080, function(){
   console.log("Server running on http://localhost:8080");
+});
+server.on('error',function(e){
+    console.log('Errors', e)
 });
 /**
 * Module Exports
